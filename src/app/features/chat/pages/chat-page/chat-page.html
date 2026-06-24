@@ -1,0 +1,64 @@
+<section class="chat-page">
+  <header class="chat-header">
+    <div>
+      <h1>Assistente AI</h1>
+      <p>Frontend Angular collegato al backend Node.</p>
+    </div>
+
+    <button type="button" class="secondary-button" (click)="clear()">Pulisci chat</button>
+  </header>
+
+  <main class="chat-window">
+    @if (chatFacade.messages().length === 0) {
+      <div class="empty-state">
+        <h2>Inizia una conversazione</h2>
+        <p>Prova a scrivere: “Quali sono gli orari?” oppure “Quanto costa?”</p>
+      </div>
+    }
+
+    @for (message of chatFacade.messages(); track message.createdAt) {
+      <div
+        class="message-row"
+        [ngClass]="{
+          'message-row-user': message.role === 'user',
+          'message-row-assistant': message.role === 'assistant',
+        }"
+      >
+        <div class="message-bubble">
+          <span class="message-author">
+            {{ message.role === 'user' ? 'Tu' : 'Bot' }}
+          </span>
+
+          <p>{{ message.text }}</p>
+        </div>
+      </div>
+    }
+
+    @if (chatFacade.loading()) {
+      <div class="message-row message-row-assistant">
+        <div class="message-bubble">
+          <span class="message-author">Bot</span>
+          <p>Sto pensando...</p>
+        </div>
+      </div>
+    }
+
+    @if (chatFacade.error()) {
+      <div class="error-message">
+        {{ chatFacade.error() }}
+      </div>
+    }
+  </main>
+
+  <form class="chat-input" (submit)="send()">
+    <textarea
+      name="message"
+      [(ngModel)]="message"
+      placeholder="Scrivi un messaggio..."
+      rows="2"
+      (keydown.enter)="onEnter($event)"
+    ></textarea>
+
+    <button type="submit" [disabled]="chatFacade.loading() || !message.trim()">Invia</button>
+  </form>
+</section>
