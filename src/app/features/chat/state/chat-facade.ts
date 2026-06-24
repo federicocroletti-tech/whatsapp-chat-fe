@@ -16,7 +16,7 @@ export class ChatFacade {
   sendMessage(text: string): void {
     const cleanText = text.trim();
 
-    if (!cleanText) {
+    if (!cleanText || this.loading()) {
       return;
     }
 
@@ -24,6 +24,8 @@ export class ChatFacade {
       role: 'user',
       text: cleanText,
       createdAt: new Date(),
+      sourceType: 'none',
+      sources: [],
     };
 
     this.messages.update((currentMessages) => [...currentMessages, userMessage]);
@@ -44,8 +46,8 @@ export class ChatFacade {
             role: 'assistant',
             text: response.reply,
             createdAt: new Date(),
-            sourceType: response.sourceType,
-            sources: response.sources,
+            sourceType: response.sourceType || 'none',
+            sources: response.sources || [],
           };
 
           this.messages.update((currentMessages) => [...currentMessages, assistantMessage]);
