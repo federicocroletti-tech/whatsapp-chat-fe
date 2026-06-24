@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 interface ChatResponse {
   reply: string;
@@ -10,7 +11,7 @@ interface ChatResponse {
   providedIn: 'root',
 })
 export class ChatApi {
-  private readonly apiUrl = 'https://whatsapp-bot-n6uq.onrender.com/chat';
+  private readonly apiUrl = `${environment.apiUrl}/chat`;
 
   constructor(private http: HttpClient) {}
 

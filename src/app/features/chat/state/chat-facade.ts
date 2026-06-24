@@ -48,8 +48,16 @@ export class ChatFacade {
 
           this.messages.update((currentMessages) => [...currentMessages, assistantMessage]);
         },
-        error: () => {
-          this.error.set('Si è verificato un errore durante la risposta del bot.');
+        error: (err) => {
+          console.error('Errore chiamata backend:', err);
+
+          const message =
+            err?.error?.error ||
+            err?.statusText ||
+            err?.message ||
+            'Si è verificato un errore durante la risposta del bot.';
+
+          this.error.set(`Errore backend: ${message}`);
         },
       });
   }
