@@ -44,6 +44,8 @@ export class ChatFacade {
             role: 'assistant',
             text: response.reply,
             createdAt: new Date(),
+            sourceType: response.sourceType,
+            sources: response.sources,
           };
 
           this.messages.update((currentMessages) => [...currentMessages, assistantMessage]);

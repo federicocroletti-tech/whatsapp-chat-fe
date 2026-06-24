@@ -2,9 +2,12 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { ChatSource, ChatSourceType } from '../../features/chat/models/chat-message.model';
 
 interface ChatResponse {
   reply: string;
+  sourceType?: ChatSourceType;
+  sources?: ChatSource[];
 }
 
 @Injectable({
