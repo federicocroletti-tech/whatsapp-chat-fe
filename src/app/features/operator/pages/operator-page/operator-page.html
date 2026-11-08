@@ -1,0 +1,146 @@
+<main class="operator-shell">
+  <header class="operator-header">
+    <div>
+      <p class="eyebrow">MOTO SMART</p>
+      <h1>Richieste officina</h1>
+      <p class="subtitle">Inbox privata per le richieste ricevute su WhatsApp.</p>
+    </div>
+    @if (authenticated()) {
+      <button class="button button--secondary" type="button" (click)="logout()" [disabled]="loading()">
+        Esci
+      </button>
+    }
+  </header>
+
+  @if (initializing()) {
+    <p class="notice" role="status">Verifica sessione…</p>
+  } @else if (!authenticated()) {
+    <form class="login-card" (ngSubmit)="login()">
+      <h2>Accesso operatore</h2>
+      <p>Accedi con le credenziali configurate in modo sicuro sul backend.</p>
+      <label for="username">Nome utente</label>
+      <input id="username" name="username" autocomplete="username" [(ngModel)]="username" required />
+      <label for="password">Password</label>
+      <input
+        id="password"
+        name="password"
+        type="password"
+        autocomplete="current-password"
+        [(ngModel)]="password"
+        required
+      />
+      @if (error()) {
+        <p class="notice notice--error" role="alert">{{ error() }}</p>
+      }
+      <button class="button" type="submit" [disabled]="loading() || !username.trim() || !password">
+        {{ loading() ? 'Accesso…' : 'Accedi' }}
+      </button>
+    </form>
+  } @else {
+    <section class="inbox" aria-label="Inbox richieste officina">
+      <div class="request-list">
+        <div class="list-toolbar">
+          <label for="status-filter">Stato</label>
+          <span class="list-hint">Ultime 100 richieste</span>
+          <select
+            id="status-filter"
+            [ngModel]="filter"
+            (ngModelChange)="selectFilter($event)"
+            [disabled]="loading()"
+          >
+            @for (status of statusFilters; track status) {
+              <option [value]="status">
+                {{ status === 'all' ? 'Tutte' : statusLabel(status) }}
+              </option>
+            }
+          </select>
+          <button
+            class="button button--secondary"
+            type="button"
+            (click)="loadRequests()"
+            [disabled]="loading()"
+            aria-label="Aggiorna elenco"
+          >
+            Aggiorna
+          </button>
+        </div>
+
+        @if (loading()) {
+          <p class="list-message" role="status">Caricamento…</p>
+        } @else if (requests().length === 0) {
+          <p class="list-message">Non ci sono richieste per questo filtro.</p>
+        } @else {
+          @for (request of requests(); track request.id) {
+            <button
+              class="request-item"
+              [class.request-item--selected]="selectedId() === request.id"
+              type="button"
+              (click)="selectedId.set(request.id)"
+              [attr.aria-pressed]="selectedId() === request.id"
+            >
+              <span class="request-item__top">
+                <strong>{{ request.customer_name }}</strong>
+                <span class="status-badge" [attr.data-status]="request.status">
+                  {{ statusLabel(request.status) }}
+                </span>
+              </span>
+              <span>{{ request.motorcycle }}</span>
+              <span class="request-item__date">{{ request.created_at | date: 'short' }}</span>
+            </button>
+          }
+        }
+      </div>
+
+      <article class="request-detail">
+        @if (error()) {
+          <p class="notice notice--error" role="alert">{{ error() }}</p>
+        }
+        @if (selectedRequest(); as request) {
+          <div class="detail-heading">
+            <div>
+              <p class="eyebrow">RICHIESTA #{{ request.id }}</p>
+              <h2>{{ request.customer_name }}</h2>
+              <p class="subtitle">{{ request.created_at | date: 'medium' }}</p>
+            </div>
+            <label class="status-control">
+              <span>Stato pratica</span>
+              <select
+                [ngModel]="request.status"
+                (ngModelChange)="updateStatus(request, $event)"
+                [disabled]="loading()"
+              >
+                @for (status of statusOptions; track status) {
+                  <option [value]="status">{{ statusLabel(status) }}</option>
+                }
+              </select>
+            </label>
+          </div>
+          <dl class="request-fields">
+            <div>
+              <dt>Identificativo WhatsApp</dt>
+              <dd>{{ request.wa_id }}</dd>
+            </div>
+            <div>
+              <dt>Moto</dt>
+              <dd>{{ request.motorcycle }}</dd>
+            </div>
+            <div>
+              <dt>Richiesta</dt>
+              <dd class="preserve-lines">{{ request.issue }}</dd>
+            </div>
+            <div>
+              <dt>Disponibilità per essere ricontattato</dt>
+              <dd>{{ request.availability }}</dd>
+            </div>
+          </dl>
+          <p class="privacy-note">
+            Dati personali: gestiscili solo per questa richiesta. Il backend applica il periodo di
+            conservazione configurato.
+          </p>
+        } @else if (!error() && requests().length > 0) {
+          <p class="list-message">Seleziona una richiesta per vedere i dettagli.</p>
+        }
+      </article>
+    </section>
+  }
+</main>
