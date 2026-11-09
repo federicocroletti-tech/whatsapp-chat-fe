@@ -4,7 +4,7 @@ import { OperatorPage } from './features/operator/pages/operator-page/operator-p
 
 export const routes: Routes = [
   {
-    path: 'operator',
+    path: 'operator/:tenantSlug',
     component: OperatorPage,
   },
   {

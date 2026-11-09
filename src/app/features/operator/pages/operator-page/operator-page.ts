@@ -1,11 +1,14 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { OperatorApi } from '../../../../core/api/operator-api';
 import {
   ServiceRequest,
   ServiceRequestStatus,
+  TenantProfile,
 } from '../../models/service-request.model';
 
 type RequestFilter = ServiceRequestStatus | 'all';
@@ -24,6 +27,7 @@ export class OperatorPage implements OnInit {
   readonly initializing = signal(true);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+  readonly tenant = signal<TenantProfile | null>(null);
   readonly requests = signal<readonly ServiceRequest[]>([]);
   readonly selectedId = signal<string | null>(null);
   readonly selectedRequest = computed(
@@ -35,39 +39,87 @@ export class OperatorPage implements OnInit {
   username = '';
   password = '';
   filter: RequestFilter = 'all';
+  private tenantSlug = '';
+  private tenantGeneration = 0;
 
-  constructor(private readonly api: OperatorApi) {}
+  constructor(
+    private readonly api: OperatorApi,
+    private readonly route: ActivatedRoute,
+    private readonly destroyRef: DestroyRef,
+  ) {}
 
   ngOnInit(): void {
-    this.api.session().subscribe({
-      next: () => {
-        this.authenticated.set(true);
-        this.initializing.set(false);
-        this.loadRequests();
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.initializeTenant(params.get('tenantSlug'));
+    });
+  }
+
+  private initializeTenant(tenantSlug: string | null): void {
+    const generation = ++this.tenantGeneration;
+    this.initializing.set(true);
+    this.authenticated.set(false);
+    this.loading.set(false);
+    this.error.set(null);
+    this.tenant.set(null);
+    this.requests.set([]);
+    this.selectedId.set(null);
+    this.username = '';
+    this.password = '';
+    this.filter = 'all';
+
+    if (!tenantSlug || !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(tenantSlug)) {
+      this.tenantSlug = '';
+      this.initializing.set(false);
+      this.error.set('Link officina non valido.');
+      return;
+    }
+    this.tenantSlug = tenantSlug;
+
+    this.api.tenant(tenantSlug).subscribe({
+      next: (tenant) => {
+        if (generation !== this.tenantGeneration) return;
+        this.tenant.set(tenant);
+        this.api.session(tenantSlug).subscribe({
+          next: () => {
+            if (generation !== this.tenantGeneration) return;
+            this.authenticated.set(true);
+            this.initializing.set(false);
+            this.loadRequests();
+          },
+          error: (error: unknown) => {
+            if (generation !== this.tenantGeneration) return;
+            this.initializing.set(false);
+            if (!(error instanceof HttpErrorResponse) || error.status !== 401) {
+              this.error.set(this.errorMessage(error));
+            }
+          },
+        });
       },
       error: (error: unknown) => {
+        if (generation !== this.tenantGeneration) return;
         this.initializing.set(false);
-        if (!(error instanceof HttpErrorResponse) || error.status !== 401) {
-          this.error.set(this.errorMessage(error));
-        }
+        this.error.set(this.errorMessage(error));
       },
     });
   }
 
   login(): void {
     const username = this.username.trim();
-    if (!username || !this.password || this.loading()) return;
+    if (!username || !this.password || !this.tenantSlug || this.loading()) return;
 
     this.loading.set(true);
     this.error.set(null);
-    this.api.login(username, this.password).subscribe({
+    const generation = this.tenantGeneration;
+    this.api.login(this.tenantSlug, username, this.password).subscribe({
       next: () => {
+        if (generation !== this.tenantGeneration) return;
         this.password = '';
         this.authenticated.set(true);
         this.loading.set(false);
         this.loadRequests();
       },
       error: (error: unknown) => {
+        if (generation !== this.tenantGeneration) return;
         this.loading.set(false);
         this.error.set(this.errorMessage(error));
       },
@@ -76,9 +128,13 @@ export class OperatorPage implements OnInit {
 
   logout(): void {
     this.loading.set(true);
-    this.api.logout().subscribe({
-      next: () => this.finishLogout(),
+    const generation = this.tenantGeneration;
+    this.api.logout(this.tenantSlug).subscribe({
+      next: () => {
+        if (generation === this.tenantGeneration) this.finishLogout();
+      },
       error: (error: unknown) => {
+        if (generation !== this.tenantGeneration) return;
         this.loading.set(false);
         this.error.set(this.errorMessage(error));
       },
@@ -86,10 +142,13 @@ export class OperatorPage implements OnInit {
   }
 
   loadRequests(): void {
+    if (!this.tenantSlug) return;
     this.loading.set(true);
     this.error.set(null);
-    this.api.listRequests(this.filter).subscribe({
+    const generation = this.tenantGeneration;
+    this.api.listRequests(this.tenantSlug, this.filter).subscribe({
       next: ({ requests }) => {
+        if (generation !== this.tenantGeneration) return;
         this.requests.set(requests);
         if (!requests.some((request) => request.id === this.selectedId())) {
           this.selectedId.set(requests[0]?.id ?? null);
@@ -97,6 +156,7 @@ export class OperatorPage implements OnInit {
         this.loading.set(false);
       },
       error: (error: unknown) => {
+        if (generation !== this.tenantGeneration) return;
         this.loading.set(false);
         if (error instanceof HttpErrorResponse && error.status === 401) {
           this.finishLogout();
@@ -115,12 +175,20 @@ export class OperatorPage implements OnInit {
   }
 
   updateStatus(request: ServiceRequest, value: string): void {
-    if (!this.statusOptions.includes(value as ServiceRequestStatus) || this.loading()) return;
+    if (
+      !this.tenantSlug ||
+      !this.statusOptions.includes(value as ServiceRequestStatus) ||
+      this.loading()
+    ) {
+      return;
+    }
     const status = value as ServiceRequestStatus;
     this.loading.set(true);
     this.error.set(null);
-    this.api.updateStatus(request.id, status).subscribe({
+    const generation = this.tenantGeneration;
+    this.api.updateStatus(this.tenantSlug, request.id, status).subscribe({
       next: ({ request: updated }) => {
+        if (generation !== this.tenantGeneration) return;
         this.requests.update((requests) =>
           requests.map((current) => (current.id === updated.id ? updated : current)),
         );
@@ -128,6 +196,7 @@ export class OperatorPage implements OnInit {
         if (this.filter !== 'all' && this.filter !== status) this.loadRequests();
       },
       error: (error: unknown) => {
+        if (generation !== this.tenantGeneration) return;
         this.loading.set(false);
         if (error instanceof HttpErrorResponse && error.status === 401) {
           this.finishLogout();
@@ -162,6 +231,7 @@ export class OperatorPage implements OnInit {
       return 'Errore imprevisto. Riprova.';
     }
     if (error.status === 401) return 'Credenziali non valide o sessione scaduta.';
+    if (error.status === 404) return 'Officina non trovata o non attiva.';
     if (error.status === 429) return 'Troppi tentativi di accesso. Riprova più tardi.';
     if (error.status === 0) return 'Backend non raggiungibile. Verifica la connessione.';
     return 'Operazione non riuscita. Riprova.';
