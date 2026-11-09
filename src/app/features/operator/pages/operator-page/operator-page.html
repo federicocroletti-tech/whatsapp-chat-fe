@@ -1,12 +1,26 @@
-<main class="operator-shell">
+<main
+  class="operator-shell"
+  [style.--tenant-primary]="tenant()?.branding?.primaryColor ?? '#286343'"
+  [style.--tenant-accent]="tenant()?.branding?.accentColor ?? '#48765d'"
+>
   <header class="operator-header">
-    <div>
-      <p class="eyebrow">MOTO SMART</p>
-      <h1>Richieste officina</h1>
-      <p class="subtitle">Inbox privata per le richieste ricevute su WhatsApp.</p>
+    <div class="brand">
+      @if (tenant()?.branding?.logoUrl; as logoUrl) {
+        <img class="brand-logo" [src]="logoUrl" alt="" />
+      }
+      <div>
+        <p class="eyebrow">MOTO SMART · {{ tenant()?.displayName }}</p>
+        <h1>Richieste officina</h1>
+        <p class="subtitle">Inbox privata per le richieste ricevute su WhatsApp.</p>
+      </div>
     </div>
     @if (authenticated()) {
-      <button class="button button--secondary" type="button" (click)="logout()" [disabled]="loading()">
+      <button
+        class="button button--secondary"
+        type="button"
+        (click)="logout()"
+        [disabled]="loading()"
+      >
         Esci
       </button>
     }
@@ -14,12 +28,23 @@
 
   @if (initializing()) {
     <p class="notice" role="status">Verifica sessione…</p>
+  } @else if (!tenant()) {
+    <p class="notice notice--error" role="alert">{{ error() || 'Officina non disponibile.' }}</p>
   } @else if (!authenticated()) {
     <form class="login-card" (ngSubmit)="login()">
       <h2>Accesso operatore</h2>
       <p>Accedi con le credenziali configurate in modo sicuro sul backend.</p>
+      <a [href]="tenant()?.privacyUrl" target="_blank" rel="noopener noreferrer">
+        Informativa privacy
+      </a>
       <label for="username">Nome utente</label>
-      <input id="username" name="username" autocomplete="username" [(ngModel)]="username" required />
+      <input
+        id="username"
+        name="username"
+        autocomplete="username"
+        [(ngModel)]="username"
+        required
+      />
       <label for="password">Password</label>
       <input
         id="password"

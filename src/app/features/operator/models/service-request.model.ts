@@ -13,4 +13,15 @@ export interface ServiceRequest {
 
 export interface OperatorSession {
   username: string;
+  role: 'owner' | 'operator';
+}
+
+export interface TenantProfile {
+  displayName: string;
+  privacyUrl: string;
+  branding: {
+    primaryColor?: string;
+    accentColor?: string;
+    logoUrl?: string;
+  };
 }

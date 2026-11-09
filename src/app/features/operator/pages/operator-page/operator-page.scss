@@ -21,6 +21,20 @@
   gap: 16px;
 }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: contain;
+  background: #fff;
+}
+
 .operator-header {
   margin-bottom: 24px;
 
@@ -37,7 +51,7 @@
 }
 
 .eyebrow {
-  color: #48765d;
+  color: var(--tenant-accent, #48765d);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -54,7 +68,7 @@
   border: 0;
   border-radius: 9px;
   color: #fff;
-  background: #286343;
+  background: var(--tenant-primary, #286343);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -109,8 +123,8 @@ select {
   font: inherit;
 
   &:focus-visible {
-    outline: 3px solid rgb(40 99 67 / 24%);
-    border-color: #286343;
+    outline: 3px solid color-mix(in srgb, var(--tenant-primary, #286343) 24%, transparent);
+    border-color: var(--tenant-primary, #286343);
   }
 }
 
@@ -165,7 +179,7 @@ select {
   }
 
   &:focus-visible {
-    outline: 3px solid #286343;
+    outline: 3px solid var(--tenant-primary, #286343);
     outline-offset: -3px;
   }
 }
